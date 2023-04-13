@@ -44,7 +44,7 @@ def main():
 
     # Find the message you want to reply to
     query = "subject:Test Email"
-    result = service.users().messages().list(userId='me', maxResults=10).execute()
+    result = service.users().messages().list(userId='me', labelIds=["INBOX"], maxResults=10).execute()
     msg_ids = [i['id'] for i in result['messages']]
 
     # Retrieve the message and its thread
@@ -55,7 +55,7 @@ def main():
     for i in range(len(msgs)):
         headers = msgs[i]['payload']['headers']
         for header in headers:
-            if header['name'] == 'From' and header['value'] != CONNECTED_MAIL:
+            if header['name'] == 'From' and "Label_1" not in msgs[i]['labelIds'] and header['value'] != CONNECTED_MAIL:
                 threads.append((msgs[i]['id'], msgs[i]['threadId'], header['value']))
 
     label_body = {
@@ -64,7 +64,7 @@ def main():
     }
 
     for msg_id, thread_id, to_mail in threads:
-        # Create areply messages
+        # Create a reply message
         reply = "I'm immensely pleasured to tell you that the test that's conducted has been successful. Thank you for the support."
         body = reply
         message = create_message("me", to_mail, "Thank you for the test", body)
