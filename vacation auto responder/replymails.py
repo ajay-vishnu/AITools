@@ -3,16 +3,12 @@ import base64
 import os
 from dotenv import load_dotenv
 
-from googleapiclient.discovery import build
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from email.mime.text import MIMEText
+
+from modules.service import Service
 
 load_dotenv()
 
-# Set up the credentials
-SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 CONNECTED_MAIL = os.environ.get('MAIL')
 
 def create_message(sender, to, subject, message_text):
@@ -23,27 +19,11 @@ def create_message(sender, to, subject, message_text):
     return {'raw': base64.urlsafe_b64encode(message.as_bytes()).decode()}
 
 def main():
-    creds = None
-
-    if os.path.exists('JSON/reply_token.json'):
-        creds = Credentials.from_authorized_user_file('JSON/reply_token.json', SCOPES)
-
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'JSON/credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open('JSON/reply_token.json', 'w') as token:
-            token.write(creds.to_json())
 
     # Create a Gmail API service instance
-    service = build('gmail', 'v1', credentials=creds)
+    service = Service(type="modify")
 
-    # Find the message you want to reply to
-    query = "subject:Test Email"
+    # Get the messages you want to reply to
     result = service.users().messages().list(userId='me', labelIds=["INBOX"], maxResults=10).execute()
     msg_ids = [i['id'] for i in result['messages']]
 
