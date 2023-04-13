@@ -1,6 +1,7 @@
 import base64
 
 import os
+from dotenv import load_dotenv
 
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
@@ -8,8 +9,11 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from email.mime.text import MIMEText
 
+load_dotenv()
+
 # Set up the credentials
 SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
+CONNECTED_MAIL = os.environ.get('MAIL')
 
 def create_message(sender, to, subject, message_text):
     message = MIMEText(message_text)
@@ -40,23 +44,33 @@ def main():
 
     # Find the message you want to reply to
     query = "subject:Test Email"
-    result = service.users().messages().list(userId='me', q=query).execute()
-    msg_id = result['messages'][0]['id']
+    result = service.users().messages().list(userId='me', maxResults=10).execute()
+    msg_ids = [i['id'] for i in result['messages']]
 
     # Retrieve the message and its thread
-    msg = service.users().messages().get(userId='me', id=msg_id, format='full').execute()
-    # print(msg['payload']['headers'])
-    thread_id = msg['threadId']
+    msgs = [service.users().messages().get(userId='me', id=msg_id, format='full').execute() for msg_id in msg_ids]
 
-    # Create a reply message
-    reply = "This is a sample reply message."
-    body = reply
-    message = create_message("me", "zain.khazi.777@gmail.com", "Reply to your email", body)
-    message['threadId'] = thread_id
+    # Get the senders' mails
+    threads = []
+    for msg in msgs:
+        headers = msg['payload']['headers']
+        for header in headers:
+            if header['name'] == 'From' and header['value'] != CONNECTED_MAIL:
+                threads.append((msg['threadId'], header['value']))
 
-    # Send the reply message
-    send_message = service.users().messages().send(userId='me', body=message).execute()
-    print(F'sent message to {send_message["to"]}')
+    # print(threads)
+
+
+    for thread_id, to_mail in threads:
+        # Create areply messages
+        reply = "I'm immensely pleasured to tell you that the test that's conducted has been successful. Thank you for the support."
+        body = reply
+        message = create_message("me", to_mail, "Thank you for the test", body)
+        message['threadId'] = thread_id
+
+        # Send the reply message
+        send_message = service.users().messages().send(userId='me', body=message).execute()
+        print(send_message)
 
 if __name__ == '__main__':
     main()
