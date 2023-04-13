@@ -52,16 +52,18 @@ def main():
 
     # Get the senders' mails
     threads = []
-    for msg in msgs:
-        headers = msg['payload']['headers']
+    for i in range(len(msgs)):
+        headers = msgs[i]['payload']['headers']
         for header in headers:
             if header['name'] == 'From' and header['value'] != CONNECTED_MAIL:
-                threads.append((msg['threadId'], header['value']))
+                threads.append((msgs[i]['id'], msgs[i]['threadId'], header['value']))
 
-    # print(threads)
+    label_body = {
+    'removeLabelIds': ['IMPORTANT', 'CATEGORY_UPDATES', 'INBOX', 'UNREAD'],
+    'addLabelIds': ["Label_1"]
+    }
 
-
-    for thread_id, to_mail in threads:
+    for msg_id, thread_id, to_mail in threads:
         # Create areply messages
         reply = "I'm immensely pleasured to tell you that the test that's conducted has been successful. Thank you for the support."
         body = reply
@@ -70,7 +72,10 @@ def main():
 
         # Send the reply message
         send_message = service.users().messages().send(userId='me', body=message).execute()
-        print(send_message)
+
+        # Add label to the message
+        label_message = service.users().messages().modify(userId='me', id=msg_id, body=label_body).execute()
+        print(send_message, label_message)
 
 if __name__ == '__main__':
     main()
